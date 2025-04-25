@@ -1,7 +1,5 @@
 import {Component} from 'react'
-
 import TodoItem from '../TodoItem'
-
 import './index.css'
 
 const initialTodosList = [
@@ -51,16 +49,20 @@ class SimpleTodos extends Component {
   state = {
     todosList: initialTodosList,
     newTodoTitle: '',
-    editingId: null,
-    editText: '',
+    editTexts: {},
   }
 
   handleInputChange = event => {
     this.setState({newTodoTitle: event.target.value})
   }
 
-  handleEditChange = event => {
-    this.setState({editText: event.target.value})
+  handleEditChange = (id, value) => {
+    this.setState(prevState => ({
+      editTexts: {
+        ...prevState.editTexts,
+        [id]: value,
+      },
+    }))
   }
 
   addTodo = () => {
@@ -105,30 +107,44 @@ class SimpleTodos extends Component {
   }
 
   deleteTodo = id => {
-    this.setState(prevState => ({
-      todosList: prevState.todosList.filter(todo => todo.id !== id),
-    }))
+    this.setState(prevState => {
+      const newEditTexts = {...prevState.editTexts}
+      delete newEditTexts[id]
+      return {
+        todosList: prevState.todosList.filter(todo => todo.id !== id),
+        editTexts: newEditTexts,
+      }
+    })
   }
 
-  startEditing = (id, title) => {
-    this.setState({editingId: id, editText: title})
+  startEditing = id => {
+    this.setState(prevState => ({
+      editTexts: {
+        ...prevState.editTexts,
+        [id]: prevState.todosList.find(todo => todo.id === id).title,
+      },
+    }))
   }
 
   saveEdit = id => {
-    const {editText} = this.state
-    if (editText.trim() === '') return
+    this.setState(prevState => {
+      const updatedText = prevState.editTexts[id]?.trim()
+      if (!updatedText) return {}
 
-    this.setState(prevState => ({
-      todosList: prevState.todosList.map(todo =>
-        todo.id === id ? {...todo, title: prevState.editText} : todo,
-      ),
-      editingId: null,
-      editText: '',
-    }))
+      return {
+        todosList: prevState.todosList.map(todo =>
+          todo.id === id ? {...todo, title: updatedText} : todo,
+        ),
+        editTexts: {
+          ...prevState.editTexts,
+          [id]: undefined,
+        },
+      }
+    })
   }
 
   render() {
-    const {todosList, newTodoTitle, editingId, editText} = this.state
+    const {todosList, newTodoTitle, editTexts} = this.state
 
     return (
       <div className="bg-container">
@@ -153,9 +169,11 @@ class SimpleTodos extends Component {
                 id={todo.id}
                 title={todo.title}
                 completed={todo.completed}
-                isEditing={editingId === todo.id}
-                editText={editText}
-                onEditChange={this.handleEditChange}
+                isEditing={editTexts[todo.id] !== undefined}
+                editText={editTexts[todo.id] || ''}
+                onEditChange={e =>
+                  this.handleEditChange(todo.id, e.target.value)
+                }
                 onToggleComplete={this.toggleComplete}
                 onStartEditing={this.startEditing}
                 onSaveEdit={this.saveEdit}
